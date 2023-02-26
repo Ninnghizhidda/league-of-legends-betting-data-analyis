@@ -26,7 +26,7 @@ def get_time_from_scoreboard_match_time(scoreboard_match_time):
     return scoreboard_match_time
 
 
-def get_data_from_url(url):
+def get_match_data_from_url(url):
     # Faz uma requisição GET para a URL e obtém o HTML da página
     response = requests.get(url)
     html_content = response.content
@@ -95,7 +95,7 @@ def concat_dataframes(caminho_arquivo):
     df_list = []
 
     for url in df_urls['urls']:
-        df_list.append(get_data_from_url(url))
+        df_list.append(get_match_data_from_url(url))
 
     concatenated_df = pd.concat(df_list)
 
