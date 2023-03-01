@@ -132,6 +132,8 @@ def dataframe(dataframe):
                 'Mid', 'Bot', 'Sup']
     dataframe[cat_cols] = dataframe[cat_cols].astype('category')
 
+    dataframe['Nome do Time'] = dataframe['Nome do Time'].str.slice(0, 5)
+
     # Verificando quais linhas têm o formato mm:ss e convertendo apenas as linhas com o formato mm:ss
     mm_ss_rows = dataframe['Tempo de Jogo'].str.contains(r'^\d{1,2}:\d{2}$')
     dataframe.loc[mm_ss_rows, 'Tempo de Jogo'] = pd.to_timedelta('00:' + dataframe.loc[mm_ss_rows, 'Tempo de Jogo'])
@@ -147,5 +149,9 @@ def dataframe(dataframe):
                                                                            dataframe['Torres do Time'].shift(1))
     dataframe['Dragões Contra'] = dataframe['Dragões do Time'].shift(-1).where(dataframe.index % 2 == 0,
                                                                            dataframe['Dragões do Time'].shift(1))
+
+    dataframe['Total de Abates'] = dataframe['Abates Contra'] + dataframe['Abates do Time']
+    dataframe['Total de Dragões'] = dataframe['Dragões Contra'] + dataframe['Dragões do Time']
+    dataframe['Total de Torres'] = dataframe['Torres Contra'] + dataframe['Torres do Time']
 
     return dataframe

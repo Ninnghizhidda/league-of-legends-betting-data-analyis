@@ -26,7 +26,8 @@ def bars_graphs(dataframe, group_column, data_column, agg_func='sum', ax=None):
     ax.set_ylabel(f'{agg_func.capitalize()} de {data_column}')
 
 
-def plot_category_statistics(df, category_column, categories_to_highlight=None, cols_to_plot=None, stats=None):
+def plot_category_statistics(df, category_column, categories_to_highlight=None, cols_to_plot=None, stats=None,
+                             sort_column=None):
     #Parâmetros
     font_size = 5
 
@@ -36,18 +37,16 @@ def plot_category_statistics(df, category_column, categories_to_highlight=None, 
 
     # Calcula as estatísticas para cada coluna numérica agrupada pela coluna de categoria
     stats_df_victory = df_victory.groupby(category_column)[cols_to_plot].agg(stats)
-    stats_df_victory.index = [textwrap.shorten(name, width=13) for name in stats_df_victory.index]
-
     stats_df_defeat = df_defeat.groupby(category_column)[cols_to_plot].agg(stats)
-    stats_df_defeat.index = [textwrap.shorten(name, width=13) for name in stats_df_defeat.index]
 
     # Plota os gráficos para cada coluna numérica
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:gray']
     fig, axs = plt.subplots(nrows=2, ncols=len(cols_to_plot), figsize=(16, 12))
 
     for i, col in enumerate(cols_to_plot):
-        stats_df_victory = stats_df_victory.sort_values([(col, 'mean')], ascending=True)
-        stats_df_defeat = stats_df_defeat.sort_values([(col, 'mean')], ascending=True)
+        if sort_column is not None:
+            stats_df_victory = stats_df_victory.sort_values([(col, sort_column)], ascending=True)
+            stats_df_defeat = stats_df_defeat.sort_values([(col, sort_column)], ascending=True)
 
         for j, stat in enumerate(stats):
             if stat == 'count':
