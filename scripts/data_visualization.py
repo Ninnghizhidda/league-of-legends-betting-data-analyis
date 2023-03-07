@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
-import textwrap
+import numpy as np
 
 
 def correlation_matrix(dataframe):
@@ -9,6 +9,35 @@ def correlation_matrix(dataframe):
 
     # Visualiza a matriz de correlação com um heatmap
     sns.heatmap(corr_matrix, annot=True)
+    plt.show()
+
+
+def plot_grid(dataframe, value_column, category_column, plot_type='hist', bins='scott', column_number=2, row_number=2):
+    # Agrupa os dados por nome de time
+    grouped_data = dataframe.groupby(category_column)
+
+    # Calcula o número de subplots necessários
+    num_subplots = len(grouped_data)
+
+    # Define as dimensões dos subplots
+    rows = row_number
+    cols = column_number
+
+    # Cria a figura e os subplots
+    fig, axs = plt.subplots(rows, cols, figsize=(12, 6))
+
+    # Itera sobre os grupos e plota o tipo de gráfico selecionado para cada grupo como um subplot separado
+    for i, (name, group) in enumerate(grouped_data):
+        row = int(i / cols)
+        col = i % cols
+        if plot_type == 'hist':
+            axs[row, col].hist(group[value_column], bins=bins)
+            axs[row, col].set_title(f'Histograma de {name} (método de {bins})', fontsize=5)
+        elif plot_type == 'box':
+            axs[row, col].boxplot(group[value_column])
+            axs[row, col].set_title(f'Boxplot de {name}', fontsize=5)
+
+    plt.tight_layout()
     plt.show()
 
 
@@ -27,13 +56,13 @@ def bars_graphs(dataframe, group_column, data_column, agg_func='sum', ax=None):
 
 
 def plot_category_statistics(df, category_column, categories_to_highlight=None, cols_to_plot=None, stats=None,
-                             sort_column=None):
-    #Parâmetros
-    font_size = 5
+                             sort_column=None, font_size=5):
+    # Parâmetros
+    font_size = font_size
 
-    # Filtra as linhas do dataframe para vitórias e derrotas
-    df_victory = df.loc[df['Resultado do Time'] == 'Victory']
-    df_defeat = df.loc[df['Resultado do Time'] == 'Defeat']
+    # Filtra as linhas do adjust_dataframe para vitórias e derrotas
+    df_victory = df.loc[df['result'] == 'Victory']
+    df_defeat = df.loc[df['result'] == 'Defeat']
 
     # Calcula as estatísticas para cada coluna numérica agrupada pela coluna de categoria
     stats_df_victory = df_victory.groupby(category_column)[cols_to_plot].agg(stats)
@@ -50,9 +79,13 @@ def plot_category_statistics(df, category_column, categories_to_highlight=None, 
 
         for j, stat in enumerate(stats):
             if stat == 'count':
-                stats_df_victory[col][stat].plot(kind='line', ax=axs[0][i], color=colors[j], alpha=0.7, linestyle='--',
+                axv1 = axs[0][i]
+                axv2 = axv1.twinx()
+                axd1 = axs[1][i]
+                axd2 = axd1.twinx()
+                stats_df_victory[col][stat].plot(kind='line', ax=axv2, color=colors[j], alpha=0.7, linestyle='--',
                                                  linewidth=2)
-                stats_df_defeat[col][stat].plot(kind='line', ax=axs[1][i], color=colors[j], alpha=0.7, linestyle='--',
+                stats_df_defeat[col][stat].plot(kind='line', ax=axd2, color=colors[j], alpha=0.7, linestyle='--',
                                                 linewidth=2)
             else:
                 stats_df_victory[col][stat].plot(kind='bar', ax=axs[0][i], color=colors[j], alpha=0.7, width=0.15,
@@ -60,17 +93,32 @@ def plot_category_statistics(df, category_column, categories_to_highlight=None, 
                 stats_df_defeat[col][stat].plot(kind='bar', ax=axs[1][i], color=colors[j], alpha=0.7, width=0.15,
                                                 position=j)
 
-        axs[0][i].set_title(f'{col} por {category_column} (vitória)', fontsize=font_size)
-        axs[0][i].set_ylabel(col, fontsize=font_size)
-        axs[0][i].set_xlabel(category_column, fontsize=font_size)
-        axs[0][i].tick_params(axis='both', labelsize=font_size)
-        axs[0][i].set_xticklabels(axs[0][i].get_xticklabels(), rotation=90)
+        axv1.set_title(f'{col} por {category_column} (win)', fontsize=font_size)
+        axv1.set_ylabel(col, fontsize=font_size)
+        axv1.set_xlabel(category_column, fontsize=font_size)
+        axv1.tick_params(axis='both', labelsize=font_size)
+        axv1.set_xticklabels(axs[0][i].get_xticklabels(), rotation=90)
+        axv1.grid(axis='y', alpha=0.5, linestyle='--', linewidth=0.5)
 
-        axs[1][i].set_title(f'{col} por {category_column} (derrota)', fontsize=font_size)
-        axs[1][i].set_ylabel(col, fontsize=font_size)
-        axs[1][i].set_xlabel(category_column, fontsize=font_size)
-        axs[1][i].tick_params(axis='both', labelsize=font_size)
-        axs[1][i].set_xticklabels(axs[1][i].get_xticklabels(), rotation=90)
+        # define as linhas de grade secundárias (sub-ticks)
+        axv1.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
+        axv1.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.5, which='minor')
+
+        axv2.tick_params(axis='both', labelsize=font_size)
+
+        axd1.set_title(f'{col} por {category_column} (lose)', fontsize=font_size)
+        axd1.set_ylabel(col, fontsize=font_size)
+        axd1.set_xlabel(category_column, fontsize=font_size)
+        axd1.tick_params(axis='both', labelsize=font_size)
+        axd1.set_xticklabels(axs[1][i].get_xticklabels(), rotation=90)
+        axd1.grid(axis='y', alpha=0.5, linestyle='--', linewidth=0.5)
+
+        # define as linhas de grade secundárias (sub-ticks)
+        axd1.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
+        axd1.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.5, which='minor')
+
+        axd2.tick_params(axis='both', labelsize=font_size)
+
 
         if categories_to_highlight is not None:
             for row in axs:
@@ -86,3 +134,33 @@ def plot_category_statistics(df, category_column, categories_to_highlight=None, 
 
     # Exibe os gráficos
     plt.show()
+
+
+def plot_category_statistics_by_team(df, category_column, cols_to_plot=None, stats=None,
+                                     sort_column=None):
+    font_size = 5
+
+    stats_df = df.groupby([category_column, 'team'])[cols_to_plot].agg(stats)
+
+    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:gray']
+    fig, axs = plt.subplots(nrows=1, ncols=len(cols_to_plot), figsize=(16, 12))
+
+    for i, col in enumerate(cols_to_plot):
+        if sort_column is not None:
+            stats_df = stats_df.sort_values([(col, sort_column)], ascending=True)
+
+        for j, stat in enumerate(stats):
+            stats_df[col][stat].plot(kind='bar', ax=axs[i], alpha=0.7, position=j)
+
+        axs[i].set_title(f'{col} por {category_column}', fontsize=font_size)
+        axs[i].set_ylabel(col, fontsize=font_size)
+        axs[i].set_xlabel(category_column, fontsize=font_size)
+        axs[i].tick_params(axis='both', labelsize=font_size)
+        axs[i].set_xticklabels(axs[i].get_xticklabels(), rotation=90)
+
+    plt.subplots_adjust(hspace=0.4, wspace=0.3)
+
+    plt.tight_layout()
+
+    plt.show()
+
