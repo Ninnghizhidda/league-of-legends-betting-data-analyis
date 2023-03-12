@@ -111,15 +111,14 @@ def concat_dataframes(caminho_arquivo):
         desired_parts = parts[:7]
         desired_url = "/".join(desired_parts) + "/Results_Diagrams"
         week_df = weekly_team_position(desired_url)
-        print('week: ' + week_df['week'].unique())
-        print('opponents: ' + week_df['opponent'].unique())
-        print('positions: ' + week_df['position'].unique())
     else:
         url = df_urls.iloc[0][0]
         parts = url.split("/")
         desired_parts = parts[:7]
         desired_url = "/".join(desired_parts)
         week_df = weekly_team_position(desired_url)
+    # print('week: ' + week_df['week'].unique())
+    # print('opponents: ' + week_df['opponent'].unique())
 
     match_list = []
 
@@ -128,9 +127,8 @@ def concat_dataframes(caminho_arquivo):
     scoreboard = pd.concat(match_list)
 
     concatenated_df = adjust_dataframe(scoreboard)
-    print(concatenated_df['week'].unique())
-    print(concatenated_df['team'].unique())
-    print(concatenated_df['opponent'].unique())
+    # print(concatenated_df['week'].unique())
+    # print(concatenated_df['opponent'].unique())
 
     # fazendo o join dos dataframes usando a coluna chave
     full_df = pd.merge(concatenated_df, week_df, on=['week', 'opponent'], how='left')
@@ -146,6 +144,7 @@ def concat_dataframes(caminho_arquivo):
 
 
 def adjust_dataframe(dataframe):
+
     # Mapeia os nomes antigos para os novos
     column_names = {'champion 1': 'top', 'champion 2': 'jungle', 'champion 3': 'mid',
                     'champion 4': 'bot', 'champion 5': 'sup'}
@@ -168,7 +167,7 @@ def adjust_dataframe(dataframe):
                 'mid', 'bot', 'sup']
     dataframe[cat_cols] = dataframe[cat_cols].astype('category')
 
-    dataframe['team'] = dataframe['team'].str.slice(0, 5)
+    dataframe['team'] = dataframe['team'].str.slice(0, 6)
 
     # Verificando quais linhas têm o formato mm:ss e convertendo apenas as linhas com o formato mm:ss
     mm_ss_rows = dataframe['time'].str.contains(r'^\d{1,2}:\d{2}$')
@@ -182,16 +181,26 @@ def adjust_dataframe(dataframe):
     # Ajusta dados do time adversário
     dataframe['opponent'] = dataframe['team'].shift(-1).where(dataframe.index % 2 == 0,
                                                               dataframe['team'].shift(1))
+
     dataframe['deaths'] = dataframe['kills'].shift(-1).where(dataframe.index % 2 == 0,
                                                              dataframe['kills'].shift(1))
     dataframe['given_towers'] = dataframe['towers'].shift(-1).where(dataframe.index % 2 == 0,
                                                                     dataframe['towers'].shift(1))
     dataframe['given_dragons'] = dataframe['dragons'].shift(-1).where(dataframe.index % 2 == 0,
                                                                       dataframe['dragons'].shift(1))
+    dataframe['given_barons'] = dataframe['barons'].shift(-1).where(dataframe.index % 2 == 0,
+                                                                      dataframe['barons'].shift(1))
 
     dataframe['total_kills'] = dataframe['deaths'] + dataframe['kills']
     dataframe['total_dragons'] = dataframe['given_dragons'] + dataframe['dragons']
     dataframe['total_towers'] = dataframe['given_towers'] + dataframe['towers']
+
+    # Ajustes de dados para o join com o weekly_position
+    dataframe['opponent'] = dataframe['opponent'].replace('RNG', 'Royal')
+    dataframe['opponent'] = dataframe['opponent'].replace('TT Ga', 'Thund')
+    dataframe['opponent'] = dataframe['opponent'].replace('NS Re', 'Nongs')
+    dataframe['opponent'] = dataframe['opponent'].replace('CLG', 'Count')
+    dataframe['week'] = dataframe['week'].replace('Round_2', 'Week_3')
 
     return dataframe
 
@@ -229,7 +238,7 @@ def weekly_team_position(url):
     df = pd.DataFrame(data, columns=["week", "opponent", "position"])
 
     df['week'] = df['week'].str.replace(' ', '_')
-    df['opponent'] = df['opponent'].str.slice(0, 5)
+    df['opponent'] = df['opponent'].str.slice(0, 6)
 
     # Exibe o DataFrame
     return df

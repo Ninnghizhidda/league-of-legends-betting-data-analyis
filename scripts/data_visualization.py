@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
 import numpy as np
+import webbrowser
+import tempfile
 
 
 def correlation_matrix(dataframe):
@@ -70,7 +73,7 @@ def plot_category_statistics(df, category_column, categories_to_highlight=None, 
 
     # Plota os gráficos para cada coluna numérica
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:gray']
-    fig, axs = plt.subplots(nrows=2, ncols=len(cols_to_plot), figsize=(16, 12))
+    fig, axs = plt.subplots(nrows=2, ncols=len(cols_to_plot), figsize=(45, 10))
 
     for i, col in enumerate(cols_to_plot):
         if sort_column is not None:
@@ -92,6 +95,10 @@ def plot_category_statistics(df, category_column, categories_to_highlight=None, 
                                                  position=j)
                 stats_df_defeat[col][stat].plot(kind='bar', ax=axs[1][i], color=colors[j], alpha=0.7, width=0.15,
                                                 position=j)
+        # Adiciona valor da coluna para cada categoria no gráfico em si
+        for rect in axv1.containers:
+            axv1.bar_label(rect, fontsize=font_size/2, padding=3, labels=[f"{v:.1f}" for v in rect.datavalues],
+                           label_type="edge", rotation=90, alpha=0.7)
 
         axv1.set_title(f'{col} por {category_column} (win)', fontsize=font_size)
         axv1.set_ylabel(col, fontsize=font_size)
@@ -102,9 +109,14 @@ def plot_category_statistics(df, category_column, categories_to_highlight=None, 
 
         # define as linhas de grade secundárias (sub-ticks)
         axv1.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
-        axv1.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.5, which='minor')
+        axv1.grid(axis='y', alpha=0.5, linestyle='--', linewidth=0.75, which='minor')
 
         axv2.tick_params(axis='both', labelsize=font_size)
+
+        # Adiciona valor da coluna para cada categoria no gráfico em si
+        for rect in axd1.containers:
+            axd1.bar_label(rect, fontsize=font_size/2, padding=3, labels=[f"{v:.1f}" for v in rect.datavalues],
+                           label_type="edge", rotation=90, alpha=0.7)
 
         axd1.set_title(f'{col} por {category_column} (lose)', fontsize=font_size)
         axd1.set_ylabel(col, fontsize=font_size)
@@ -115,10 +127,9 @@ def plot_category_statistics(df, category_column, categories_to_highlight=None, 
 
         # define as linhas de grade secundárias (sub-ticks)
         axd1.yaxis.set_minor_locator(plt.MultipleLocator(0.5))
-        axd1.grid(axis='y', alpha=0.2, linestyle='--', linewidth=0.5, which='minor')
+        axd1.grid(axis='y', alpha=0.5, linestyle='--', linewidth=0.75, which='minor')
 
         axd2.tick_params(axis='both', labelsize=font_size)
-
 
         if categories_to_highlight is not None:
             for row in axs:
@@ -164,3 +175,54 @@ def plot_category_statistics_by_team(df, category_column, cols_to_plot=None, sta
 
     plt.show()
 
+
+def show_pivot_tables(df, category_column, cols_to_plot, team_name=None, lower_position=0, upper_position=99,
+                      weeks=None):
+    # Filtra as posições dos times de acordo com o confronto a ser realizado
+    df = df.query(f"{lower_position} <= position <= {upper_position}")
+
+    # Filtra apenas as semanas definidas
+    if weeks is not None:
+        df = df[df['week'].isin(weeks)]
+
+    # Calcula a média por time e por resultado
+    mean_stats_df = df.pivot_table(index=category_column, columns='result', values=cols_to_plot, aggfunc='mean')
+
+    # Ordena os dados pelo parâmetro 'cat'
+    mean_stats_df = mean_stats_df.sort_values(by=category_column)
+
+    # Renomeia as colunas para melhorar a visualização
+    mean_stats_df.columns = [f'{col}_{res}' for res, col in mean_stats_df.columns]
+    mean_stats_df.columns = mean_stats_df.columns.str.replace('_', '\n')
+
+    # Arredonda os valores para uma casa decimal
+    mean_stats_df = mean_stats_df.round(decimals=1)
+
+    # Converte os DataFrames em strings HTML
+    mean_html_string = mean_stats_df.to_html()
+
+    # Coloca em negrito os valores referentes aos times especificados em team_names
+    if team_name is not None:
+        if team_name in mean_stats_df.index:
+            team_row = mean_stats_df.loc[team_name]
+            for col_idx, cell in team_row.items():
+                if isinstance(cell, (int, float)):
+                    cell_str = f'{cell:.1f}'
+                else:
+                    cell_str = str(cell)
+                mean_stats_df.loc[team_name, col_idx] = f'<strong>{cell_str}</strong>'
+
+        # Lê o arquivo CSS
+        with open('C:\\npm\\league-of-legends-betting-data-analyis\\outputs\\assets\\pivot.css') as f:
+            css = f.read()
+
+        # Convert the DataFrames to HTML strings
+        mean_html_string = mean_stats_df.to_html(escape=False, classes='table', index=True)
+        mean_html_string = f'<style>{css}</style>' + mean_html_string
+
+    # Salva as strings HTML em arquivos temporários
+    with tempfile.NamedTemporaryFile(suffix='.html', delete=False) as mean_f:
+        mean_f.write(mean_html_string.encode('utf-8'))
+
+    # Abre os arquivos temporários no navegador padrão
+    webbrowser.open(mean_f.name)
